@@ -1,156 +1,142 @@
 import streamlit as st
 import sys
 import os
+from uuid import uuid4
 import pandas as pd
 import tempfile
-from uuid import uuid4
 
-# Adiciona o diretório do projeto ao path
+# Adiciona o diretório do projeto ao path para encontrar o pacote 'agentai'
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
-# Importações principais do agente
+# Importa a classe principal do agente
 from agentai.workflow import WorkflowExecutor
 from langchain_community.chat_models import ChatDeepInfra
 
 st.set_page_config(page_title="Agente de Análise de Dados", layout="wide")
-st.title("Agente de Pré-processamento e Forecasting")
-st.markdown(
-    "Carregue um arquivo CSV e descreva em linguagem natural a tarefa desejada. "
-    "O agente fará o pré-processamento, análise e previsão automaticamente."
-)
+st.title("🤖 Agente de Pré-processamento de Dados")
+st.markdown("Faça o upload de um arquivo CSV e dê instruções em linguagem natural para o agente analisar e transformar seus dados.")
 
-# Estados persistentes
-if "executor" not in st.session_state:
+if 'executor' not in st.session_state:
     st.session_state.executor = None
-if "df_original" not in st.session_state:
+if 'df_original' not in st.session_state:
     st.session_state.df_original = None
-if "df_modificado" not in st.session_state:
+if 'df_modificado' not in st.session_state:
     st.session_state.df_modificado = None
-if "last_result" not in st.session_state:
-    st.session_state.last_result = None
 
-
+#Sidebar
 with st.sidebar:
-    st.header("1️⃣ Carregar Dados")
-    uploaded_file = st.file_uploader("Escolha um arquivo CSV", type="csv")
+    st.header("1. Carregar Dados")
+    uploaded_file = st.file_uploader(
+        "Escolha um arquivo CSV",
+        type="csv"
+    )
 
+    
     if uploaded_file is not None:
-        if st.button("🚀 Iniciar Agente"):
-            with st.spinner("Inicializando agente..."):
+        if st.button("Carregar e Iniciar Agente"):
+            with st.spinner("Lendo o arquivo e inicializando o agente..."):
                 try:
+                    # Salvar CSV em arquivo temporário
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp_file:
                         tmp_file.write(uploaded_file.getbuffer())
                         csv_path = tmp_file.name
 
+                    # Ler CSV para exibição no Streamlit
                     df = pd.read_csv(csv_path)
-                    st.session_state.df_original = df.copy()
-                    st.session_state.df_modificado = None
 
+                    st.session_state.df_original = df.copy()
+                    st.session_state.df_modificado = None  # Reseta o df modificado
+
+                    # Criar instância do LLM (mesmo modelo usado no main.py)
                     llm = ChatDeepInfra(model="Qwen/Qwen2.5-72B-Instruct")
 
                     base_dir = os.path.dirname(__file__)
-                    results_path = os.path.join(base_dir, "agentai", "results", "forecast", "test")
+                    images_path = os.path.join(base_dir, "agentai", "images", "plots")
 
+                    # Inicializa o WorkflowExecutor com o caminho do CSV
                     st.session_state.executor = WorkflowExecutor(
                         llm=llm,
-                        csv_path=csv_path,
-                        plot_images_path=results_path
+                        plot_images_path=images_path,
+                        csv_path=csv_path
                     )
-                    st.success("✅ Agente pronto para receber instruções!")
+                    
+                    st.success("Agente pronto para receber instruções!")
                 except Exception as e:
-                    st.error(f"Erro ao iniciar agente: {e}")
+                    st.error(f"Erro ao processar o arquivo: {e}")
                     st.session_state.executor = None
 
 if st.session_state.executor is None:
-    st.info("Carregue um CSV na barra lateral para começar.")
+    st.info("Por favor, carregue um arquivo CSV na barra lateral para começar.")
 else:
-    st.header("📊 Dados Carregados")
-    st.dataframe(st.session_state.df_original, use_container_width=True)
+    # Exibe o DataFrame original
+    st.header("Visão Geral dos Dados Carregados")
+    st.dataframe(st.session_state.df_original)
 
-    st.header("🗣️ Instrução para o Agente")
+    st.header("2. Instruções para o Agente")
     prompt_usuario = st.text_area(
-        "Descreva a tarefa que o agente deve executar:",
+        "Descreva a tarefa que você quer que o agente execute:",
         height=150,
-        placeholder="Exemplo: verifique valores ausentes e preveja a coluna 'pressure'."
+        placeholder="Ex: Crie uma feature de média móvel de 3 horas para a temperatura e depois um resumo dos dados."
     )
 
-    if st.button("▶️ Executar"):
-        if not prompt_usuario.strip():
-            st.warning("Por favor, insira uma instrução antes de executar.")
-        else:
+   
+    if st.button("Executar Agente"):
+        if prompt_usuario:
             thread_id = str(uuid4())
-            executor_instance = st.session_state.executor
-
-            # Espaços dinâmicos de UI
-            st.markdown("---")
-            progress = st.progress(0)
-            log_container = st.empty()
-
-            logs_temp = []
-            total_nodes = 6  # aproximadamente: supervisor, inspect, imputator, feature, automl, summarizer
-            current_node = 0
-
-            with st.spinner("O agente está trabalhando..."):
+            
+            with st.spinner("O agente está trabalhando... Por favor, aguarde."):
                 try:
-                    config = {"configurable": {"thread_id": thread_id}}
-                    initial_state = {
-                        "msg": prompt_usuario,
-                        "logs": [],
-                        "main_goal": prompt_usuario,
-                        "is_before_dp": True,
-                    }
+                    # Pega a instância do executor da sessão
+                    executor_instance = st.session_state.executor
+                    
+                    # Executa o agente
+                    final_state = executor_instance.invoke(
+                        initial_message=prompt_usuario, 
+                        thread_id=thread_id
+                    )
 
-                    # Execução em tempo real
-                    for chunk in executor_instance.graph.stream(initial_state, config=config, recursion_limit=35):
-                        for node_name, state in chunk.items():
-                            current_node += 1
-                            log_entry = f"### 🧩 [{node_name.upper()}]\n"
-                            if report := state.get("subagents_report"):
-                                log_entry += f"{report}\n\n"
-                            if node_name == "supervisor":
-                                log_entry += f"➡️ **Próximo passo:** `{state.get('next')}`\n"
-
-                            logs_temp.append(log_entry)
-                            progress.progress(min(current_node / total_nodes, 1.0))
-                            log_container.markdown("\n---\n".join(logs_temp))
-
-                            final_state = state  # armazena último estado válido
-
-                    # Atualiza sessão
+                    
                     st.session_state.df_modificado = executor_instance.df.copy()
+                    
                     st.session_state.last_result = final_state
-                    st.success("✅ Execução concluída com sucesso!")
+                    
+                    st.success("O agente concluiu a tarefa!")
 
                 except Exception as e:
-                    st.error(f"Ocorreu um erro durante a execução: {e}")
-                    st.session_state.last_result = None
-
-if st.session_state.df_modificado is not None:
-    st.header("📋 DataFrame Processado")
-    st.dataframe(st.session_state.df_modificado, use_container_width=True)
-
-    st.header("📊 Visualizações Geradas")
-    images_path = os.path.join(os.path.dirname(__file__), "agentai", "results", "forecast", "test")
-
-    image_files = [
-        os.path.join(root, file)
-        for root, _, files in os.walk(images_path)
-        for file in files if file.lower().endswith(".png")
-    ]
-
-    if image_files:
-        cols = st.columns(2)
-        for idx, img_path in enumerate(sorted(image_files)):
-            with cols[idx % 2]:
-                st.image(img_path, caption=os.path.basename(img_path), use_container_width=True)
-    else:
-        st.info(f"Nenhuma imagem encontrada em: `{images_path}`")
-
-if st.session_state.last_result:
-    with st.expander("📝 Logs Finais da Execução", expanded=False):
-        logs = st.session_state.last_result.get("logs", [])
-        if logs:
-            log_formatado = "\n".join([f"- {log}" for log in logs])
-            st.markdown(f"```\n{log_formatado}\n```")
+                    st.error(f"Ocorreu um erro durante a execução do agente: {e}")
+                    # Limpa o resultado anterior em caso de erro
+                    st.session_state.df_modificado = None 
         else:
-            st.info("Nenhum log registrado.")
+            st.warning("Por favor, insira uma instrução para o agente.")
+
+    if st.session_state.df_modificado is not None:
+        st.header("3. DataFrame Processado")
+        st.dataframe(st.session_state.df_modificado)
+
+       
+        if 'final_state' in locals():
+             with st.expander("Ver Logs da Execução"):
+                log_formatado = "\n".join([f"- {log}" for log in final_state.get("logs", [])])
+                st.markdown(f"```\n{log_formatado}\n```")
+                
+        if "last_result" in st.session_state:
+            st.header("📊 Visualizações Geradas")
+
+            images_path = os.path.join(os.path.dirname(__file__), "agentai", "images", "plots")
+            if os.path.exists(images_path):
+                for root, dirs, files in os.walk(images_path):
+                    for file in files:
+                        if file.endswith(".png"):
+                            st.image(os.path.join(root, file), caption=file, width="content")
+
+
+        else:
+            st.info("Nenhuma imagem foi gerada.")
+
+        with st.expander("📝 Logs da Execução", expanded=False):
+            logs = st.session_state.last_result.get("logs", [])
+            if logs:
+                log_formatado = "\n".join([f"- {log}" for log in logs])
+                st.markdown(f"```\n{log_formatado}\n```")
+            else:
+                st.info("Nenhum log registrado.")

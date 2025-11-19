@@ -27,8 +27,8 @@ def execute_pipeline():
     
     print("*** Iniciando o pipeline ***\n\n")
 
-    csv_path = "agentai/datasets/test.csv"
-    plot_images_path = "agentai/images/plots"
+    csv_path = "agentai/datasets/ETTh1.csv"
+    plot_images_path = "images/plots"
 
     try:
         executor = WorkflowExecutor(llm=llm, csv_path=csv_path, plot_images_path=plot_images_path)
@@ -38,17 +38,16 @@ def execute_pipeline():
 
     try:
         png_bytes = executor.graph.get_graph().draw_mermaid_png()
-        with open("workflow_mermaid_graph.png", "wb") as f:
+        with open("workflow_graph.png", "wb") as f:
             f.write(png_bytes)
-        print("Grafo salvo como 'workflow_mermaid_graph.png'")
+        print("Grafo salvo como 'workflow_graph.png'")
     except Exception as e:
         print(f"Não foi possível gerar a imagem do grafo: {e}")
 
     # unique ID
     thread_id = str(uuid4())
 
-    #initial_prompt = "Perform a complete exploratory data analysis on the quality of this dataset. Start with a general overview, then delve into the most important points you deem necessary, such as missing values, descriptive statistics, and potential outliers. Finally, perform a forecasting task for the 'temperature' column using appropriate models and techniques. Provide visualizations where necessary to support your analysis."
-    initial_prompt = "just check the missing value in the dataset and try to fill it using appropriate techniques. After that, perform a forecasting task for the 'pressure' column using appropriate models and techniques."
+    initial_prompt = "just check the missing value in the dataset and try to fill it using appropriate techniques. After that, perform a forecasting task for the 'OT' column using appropriate models and techniques."
     executor.invoke(initial_message=initial_prompt, thread_id=thread_id)
 
 if __name__ == "__main__":
