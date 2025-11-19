@@ -756,11 +756,24 @@ def make_automl_tools(df: pd.DataFrame, target: str, test_size: float = 0.2, pre
             new_df = new_df.sort_values(time_col)
 
             # AutoGluon requires item_id even for 1 series
-            new_df["item_id"] = "series_0"
+            # If an 'item_id' column already exists, keep it. Otherwise prefer a detected id column
+            if "item_id" in new_df.columns:
+                logs.append("Using existing 'item_id' column.")
+            else:
+                possible_id_cols = [c for c in new_df.columns if c.lower() in ("id", "series_id", "series", "entity", "store", "sensor", "machine", "device")]
+                if possible_id_cols:
+                    chosen = possible_id_cols[0]
+                    new_df["item_id"] = new_df[chosen].astype(str)
+                    logs.append(f"Using detected id column: '{chosen}' as item_id.")
+                else:
+                    new_df["item_id"] = "series_0"
+                    logs.append("No id column found — created 'item_id' = 'series_0'.")
 
             # Keep ALL columns (target + covariates)
             all_cols = ["item_id", time_col] + [c for c in new_df.columns if c not in ["item_id", time_col]]
 
+            # NEW: DO NOT convert to TimeSeriesDataFrame before splitting
+            # Because AG splits must receive the *same set of feature columns*
             # NEW: DO NOT convert to TimeSeriesDataFrame before splitting
             # Because AG splits must receive the *same set of feature columns*
 
