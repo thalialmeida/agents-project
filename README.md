@@ -33,3 +33,7 @@ agenteiadp/
 ├── requirements.txt        # Dependências do projeto
 └── README.md               #  Este arquivo
 ```
+<<<<<<< HEAD
+=======
+
+>>>>>>> 456a13277afedbb9e1acb435741e8a4d15e9dc06
