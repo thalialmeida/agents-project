@@ -33,15 +33,3 @@ agenteiadp/
 ├── requirements.txt        # Dependências do projeto
 └── README.md               #  Este arquivo
 ```
-
----
-
-## Colaboradores
-
-- Gabriel de Souza Gomes
-- Lucas Malacarne Astore
-- Luisa Marques Laboissiere
-- Thiago Lucas de Oliveira
-
-
----
