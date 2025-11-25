@@ -1,14 +1,14 @@
-# OPA – Observe, Preprocess, and Act
+# OPA – Observe, Preprocess, and Act: A Multi-Agentic Framework for Data Preprocessing and Predictive Intelligence
 
-Projeto desenvolvido pelo Projeto Agents-of-Future do FutureLab (DCC-UFMG) em Parceria com a KUNUMI S/A.
+LLM project
 
-# Arquitetura
+# Architecture
 
 >  <p align="left">
->  <img src="https://github.com/astorelucas/agenteiadp/blob/main/agentai/workflow_graph.png?raw=true" alt="Arquitetura" width="500"/>
+> <img width="662" height="311" alt="opadiagram" src="https://github.com/user-attachments/assets/624dc244-aa83-4254-a924-1988f9efdda7" />
 >  </p> 
 
-## Estrutura do Repositório
+## Repo Structure 
 
 ```plaintext
 
@@ -33,7 +33,3 @@ agenteiadp/
 ├── requirements.txt        # Dependências do projeto
 └── README.md               #  Este arquivo
 ```
-<<<<<<< HEAD
-=======
-
->>>>>>> 456a13277afedbb9e1acb435741e8a4d15e9dc06
